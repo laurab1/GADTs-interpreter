@@ -1,4 +1,4 @@
-{-# LANGUAGE GADTs, ExistentialQuantification, DeriveDataTypeable #-}
+{-# LANGUAGE GADTs, ExistentialQuantification #-}
 module Main where
 import Data.Typeable
 
