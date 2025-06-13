@@ -9,7 +9,6 @@ type Env = [(String, Value)]
 data Simple a where
     IVal :: Int -> Simple Int
     IBool :: Bool -> Simple Bool
-    IVar :: String -> Simple Value
     IAdd :: Simple Int -> Simple Int -> Simple Int
     IMul :: Simple Int -> Simple Int -> Simple Int
     IDiv :: Simple Int -> Simple Int -> Simple Int
@@ -21,10 +20,6 @@ evalSimple :: Simple a -> Env -> Either String a
 evalSimple expr env = case expr of
     IVal n -> Right n
     IBool b -> Right b
-    IVar x ->
-        case lookup x env of
-            Nothing -> (Left ("Unbound variable " ++ x))
-            Just val -> (Right val)
     IAdd n m -> do
         v1 <- evalSimple n env
         v2 <- evalSimple m env
