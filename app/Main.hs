@@ -5,7 +5,6 @@ import Data.Typeable
 
 data Value a =
     VInt Int | VBool Bool | VFun String (Simple a) Env
-
 instance Eq (Value a) where
     (==) :: Value a -> Value a -> Bool
     VInt x == VInt y = x == y
@@ -16,10 +15,10 @@ instance Show (Value a) where
     show :: Value a -> String
     show (VInt x) = show x
     show (VBool x) = show x
-    show VFun {}  = "<function>"
+    show _  = "<function>"
 
 data ValueWrapper where
-    ValueWrapper :: Typeable a => Simple a -> ValueWrapper
+    ValueWrapper :: Typeable a => Value a -> ValueWrapper
 
 type Env = [(String, ValueWrapper)]
 
@@ -35,6 +34,7 @@ data Simple a where
     Let :: String -> Simple a -> Simple a -> Simple a
     Fun :: String -> Simple a -> Simple a
     Apply :: Simple a -> Simple a -> Simple a
+    LetRec :: String -> String -> Simple a -> Simple a -> Simple a
 
 evalSimple :: Typeable a => Simple a -> Env -> Either String (Value a)
 evalSimple expr env = case expr of
@@ -44,7 +44,7 @@ evalSimple expr env = case expr of
         Nothing -> Left ("Unbound variable" ++ x)
         Just (ValueWrapper v) -> case cast v of
             Nothing -> Left "Type mismatch"
-            Just e -> evalSimple e env
+            Just val -> Right val
     IAdd n m -> do
         v1 <- evalSimple n env
         v2 <- evalSimple m env
@@ -77,12 +77,18 @@ evalSimple expr env = case expr of
             VBool True -> evalSimple e1 env
             VBool False -> evalSimple e2 env
             _ -> Left "Type mismatch: guard has to be boolean"
-    Let x e1 e2 -> let env2 = (x, ValueWrapper e1):env in evalSimple e2 env2
+    Let x e1 e2 -> do
+        v1 <- evalSimple e1 env
+        let env2 = (x, ValueWrapper v1):env in evalSimple e2 env2
     Fun ide body -> Right (VFun ide body env)
+    LetRec f ide body e2 ->
+        let recClosure = VFun ide body ((f, ValueWrapper recClosure) : env)
+        in evalSimple e2 ((f, ValueWrapper recClosure) : env)
     Apply f arg -> do
         fclosure <- evalSimple f env
+        valArg <- evalSimple arg env
         case fclosure of
-            VFun par body fenv -> evalSimple body ((par,ValueWrapper arg):fenv)
+            VFun par body fenv -> evalSimple body ((par,ValueWrapper valArg):fenv)
             _ -> Left "No function in apply"
 
 
